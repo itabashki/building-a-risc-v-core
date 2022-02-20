@@ -72,6 +72,25 @@
    $is_j_instr = $opcode[6:2] == 5'b11011;
    
    
+   // Instruction subfield extraction
+   // NOTE: $funct7 is not used in the course and is skipped
+   $funct3[2:0] = $instr[14:12];
+   $rd[4:0] = $instr[11:7];
+   $rs1[4:0] = $instr[19:15];
+   $rs2[4:0] = $instr[24:20];
+   
+   $funct3_valid = !($is_u_instr | $is_j_instr);
+   $rd_valid = !($is_s_instr | $is_b_instr);
+   $rs1_valid = $funct3_valid;
+   $rs2_valid = $is_r_instr | $is_s_instr | $is_b_instr;
+   $imm_valid = !$is_r_instr;
+   
+   
+   // Suppress unused signal warnings
+   `BOGUS_USE($funct3 $funct3_valid $rd $rd_valid $rs1 $rs1_valid
+              $rs2 $rs2_valid $imm_valid)
+   
+   
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
