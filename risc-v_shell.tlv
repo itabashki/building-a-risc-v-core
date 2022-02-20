@@ -54,6 +54,24 @@
    `READONLY_MEM($pc[31:0], $$instr[31:0])
    
    
+   // Opcode decoding
+   // NOTE: assumes all instructions are valid RV32I and $opcode[1:0] is always 2'b11
+   $opcode[6:0] = $instr[6:0];
+   $is_u_instr = $opcode[6:2] ==? 5'b0x101;
+   
+   $is_i_instr = ($opcode[6:2] ==? 5'b0000x)
+               | ($opcode[6:2] ==? 5'b001x0)
+               | ($opcode[6:2] == 5'b11001);
+   
+   $is_r_instr = ($opcode[6:2] == 5'b01011)
+               | ($opcode[6:2] ==? 5'b011x0)
+               | ($opcode[6:2] == 5'b10100);
+   
+   $is_s_instr = $opcode[6:2] ==? 5'b0100x;
+   $is_b_instr = $opcode[6:2] == 5'b11000;
+   $is_j_instr = $opcode[6:2] == 5'b11011;
+   
+   
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
