@@ -49,6 +49,11 @@
    $pc[31:0] = >>1$next_pc;
    
    
+   // Instantiate IMem ROM
+   // (automatically populated with assembled instructions)
+   `READONLY_MEM($pc[31:0], $$instr[31:0])
+   
+   
    // Assert these to end simulation (before Makerchip cycle limit).
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
