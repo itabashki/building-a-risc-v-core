@@ -45,8 +45,11 @@
    $reset = *reset;
    
    
-   // Basic PC Logic
-   $next_pc[31:0] = $reset ? 32'b0 : ($pc + 4);
+   // Program Counter Logic
+   $next_pc[31:0] = $reset ? 32'b0 :
+                    $taken_br ? $br_tgt_pc :
+                    $pc + 4;
+   
    $pc[31:0] = >>1$next_pc;
    
    
@@ -114,14 +117,26 @@
    // Forbid writes to the zero register
    $wr_en = $rd_valid & !($rd[4:0] == 5'b0);
    
-  
+   
+   // Branching logic
+   $taken_br = $is_beq ? $src1_value == $src2_value :
+               $is_bne ? $src1_value != $src2_value :
+               $is_blt ? ($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
+               $is_bge ? ($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
+               $is_bltu ? $src1_value < $src2_value :
+               $is_bgeu ? $src1_value >= $src2_value :
+               0'b0;
+   
+   $br_tgt_pc[31:0] = $pc + $imm;
+   
+   
    // Suppress unused signal warnings
    `BOGUS_USE($funct3_valid $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid)
    `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_add $is_addi)
    
    
    // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = 1'b0;
+   m4+tb() // Expands to a *passed check that x30 == 1 and the program is looping infinitely
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    // Register File Macro
