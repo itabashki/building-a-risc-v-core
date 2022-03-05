@@ -131,20 +131,57 @@
    $is_and   = $dec_bits ==? 11'b0_111_0110011;
    
    
-   // Arithmetic Logic Unit
-   $result[31:0] = $is_addi ? $src1_value + $imm :
+   // Signed comparison helper sub-expression
+   $src1_sign = $src1_value[31];
+   $src2_sign = $src2_value[31];
+   $imm_sign = $imm[31];
+   $src1_src2_signs_differ = $src1_sign != $src2_sign;
+   $src1_imm_signs_differ = $src1_sign != $imm_sign;
+   
+   // SLTU and SLTI (set if less than, unsigned) sub-results:
+   $sltu_result[31:0]  = { 31'b0, $src1_value < $src2_value };
+   $sltiu_result[31:0] = { 31'b0, $src1_value < $imm };
+   
+   // SRA and SRAI (arithmetic shift right, unsigned) sub-results:
+   $sext_src1[63:0] = { {32{$src1_sign}}, $src1_value }; // sign-extended src1
+   $sra_result[63:0] = $sext_src1 >> $src2_value[4:0]; // 64-bit results (will be truncated)
+   $srai_result[63:0] = $sext_src1 >> $imm[4:0];
+   
+   // Arithmetic instruction evaluation
+   $result[31:0] = $is_jal ? $pc + 32'h4 :
+                   $is_jalr ? $pc + 32'h4 :
+                   $is_auipc ? $pc + $imm :
+                   $is_lui ? { $imm[31:12], 12'b0 } :
+                   $is_addi ? $src1_value + $imm :
+                   $is_slti ? $sltiu_result ^ {31'b0, $src1_imm_signs_differ} :
+                   $is_sltiu ? $sltiu_result :
+                   $is_xori ? $src1_value ^ $imm :
+                   $is_ori ? $src1_value | $imm :
+                   $is_andi ? $src1_value & $imm :
+                   $is_slli ? $src1_value << $imm[5:0] :
+                   $is_srli ? $src1_value >> $imm[5:0] :
+                   $is_srai ? $srai_result[31:0] :
                    $is_add ? $src1_value + $src2_value :
+                   $is_sub ? $src1_value - $src2_value :
+                   $is_sll ? $src1_value << $src2_value[4:0] :
+                   $is_slt ? $sltu_result ^ {31'b0, $src1_src2_signs_differ} :
+                   $is_sltu ? $sltu_result :
+                   $is_xor ? $src1_value ^ $src2_value :
+                   $is_srl ? $src1_value >> $src2_value[4:0] :
+                   $is_sra ? $sra_result[31:0] :
+                   $is_or ? $src1_value | $src2_value :
+                   $is_and ? $src1_value & $src2_value :
                    32'b0;
    
    // Forbid writes to the zero register
-   $wr_en = $rd_valid & !($rd[4:0] == 5'b0);
+   $wr_en = $rd_valid & ($rd[4:0] != 5'b0);
    
    
    // Branching logic
    $taken_br = $is_beq ? $src1_value == $src2_value :
                $is_bne ? $src1_value != $src2_value :
-               $is_blt ? ($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
-               $is_bge ? ($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
+               $is_blt ? ($src1_value < $src2_value) ^ $src1_src2_signs_differ :
+               $is_bge ? ($src1_value >= $src2_value) ^ $src1_src2_signs_differ :
                $is_bltu ? $src1_value < $src2_value :
                $is_bgeu ? $src1_value >= $src2_value :
                0'b0;
@@ -153,9 +190,8 @@
    
    
    // Suppress unused signal warnings
-   `BOGUS_USE($funct3_valid $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid)
-   `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_add $is_addi)
-   
+   `BOGUS_USE($imm_valid $is_load $is_store)
+   `BOGUS_USE($is_lb $is_lh $is_lw $is_lbu $is_lhu $is_sb $is_sh $is_sw)
    
    // Assert these to end simulation (before Makerchip cycle limit).
    m4+tb() // Expands to a *passed check that x30 == 1 and the program is looping infinitely
