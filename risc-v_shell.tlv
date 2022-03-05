@@ -15,7 +15,7 @@
    // would result in all 1s for registers x5-x27.
    //
    m4_test_prog() 
-   m4_define(['M4_MAX_CYC'], 50)
+   m4_define(['M4_MAX_CYC'], 60)
    //---------------------------------------------------------------------------------
 
 
@@ -31,6 +31,8 @@
    // Program Counter Logic
    $next_pc[31:0] = $reset ? 32'b0 :
                     $taken_br ? $br_tgt_pc :
+                    $is_jal ? $br_tgt_pc :
+                    $is_jalr ? $jalr_tgt_pc :
                     $pc + 4;
    
    $pc[31:0] = >>1$next_pc;
@@ -187,6 +189,7 @@
                0'b0;
    
    $br_tgt_pc[31:0] = $pc + $imm;
+   $jalr_tgt_pc[31:0] = $src1_value + $imm;
    
    
    // Suppress unused signal warnings
