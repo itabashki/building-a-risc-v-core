@@ -101,6 +101,12 @@
    $is_sh  = $dec_bits ==? 11'bx_001_0100011;
    $is_sw  = $dec_bits ==? 11'bx_010_0100011;
    
+   // For the purposes of the course, we ignore the load/store width,
+   // and only determine whether to load or store based on the opcode
+   // and the instruction type (S-type for stores)
+   $is_load = $opcode == 7'b0000011;
+   $is_store = $is_s_instr;
+   
    // Arithmetic/Logic instruction decode
    $is_lui   = $dec_bits ==? 11'bx_xxx_0110111;
    $is_auipc = $dec_bits ==? 11'bx_xxx_0010111;
