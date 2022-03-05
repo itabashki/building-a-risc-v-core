@@ -30,6 +30,7 @@
    // Test result value in x14, and set x31 to reflect pass/fail.
    m4_asm(ADDI, x30, x14, 111111010100) // Subtract expected value of 44 to set x30 to 1 if and only iff the result is 45 (1 + 2 + ... + 9).
    m4_asm(BGE, x0, x0, 0) // Done. Jump to itself (infinite loop). (Up to 20-bit signed immediate plus implicit 0 bit (unlike JALR) provides byte address; last immediate bit should also be 0)
+   m4_asm(ADDI, x0, x0, 101010)         // Try to write a non-zero value to x0
    m4_asm_end()
    m4_define(['M4_MAX_CYC'], 50)
    //---------------------------------------------------------------------------------
@@ -105,6 +106,15 @@
    $is_addi = $dec_bits ==? 11'bx_000_0010011;
    
    
+   // Arithmetic Logic Unit
+   $result[31:0] = $is_addi ? $src1_value + $imm :
+                   $is_add ? $src1_value + $src2_value :
+                   32'b0;
+   
+   // Forbid writes to the zero register
+   $wr_en = $rd_valid & !($rd[4:0] == 5'b0);
+   
+  
    // Suppress unused signal warnings
    `BOGUS_USE($funct3_valid $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid)
    `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_add $is_addi)
@@ -115,7 +125,7 @@
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    // Register File Macro
-   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $dest_data[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
+   m4+rf(32, 32, $reset, $wr_en, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
    m4+cpu_viz()
