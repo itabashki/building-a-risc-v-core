@@ -10,9 +10,9 @@
    //---------------------------------------------------------------------------------
    // Test program for RV32-I (instructions are expanded from macro)
    //
-   // Runs through all instructions and generates a value in each register from x5-x27
+   // Runs through all instructions and generates a value in each register from x5-x30
    // Then XORs each register with a unique value, such that a passing implementation
-   // would result in all 1s for registers x5-x27.
+   // would result in all 1s for registers x5-x30.
    //
    m4_test_prog() 
    m4_define(['M4_MAX_CYC'], 60)
@@ -103,9 +103,10 @@
    $is_sh  = $dec_bits ==? 11'bx_001_0100011;
    $is_sw  = $dec_bits ==? 11'bx_010_0100011;
    
-   // For the purposes of the course, we ignore the load/store width,
-   // and only determine whether to load or store based on the opcode
-   // and the instruction type (S-type for stores)
+   // For the purposes of the course, we ignore the load/store width, assuming
+   // every load/store has WORD width and the address is naturally aligned.
+   // Allows the implementation to determine the necessary operation only
+   // using the opcode and the instruction type (S-type for stores).
    $is_load = $opcode == 7'b0000011;
    $is_store = $is_s_instr;
    
@@ -154,6 +155,7 @@
                    $is_jalr ? $pc + 32'h4 :
                    $is_auipc ? $pc + $imm :
                    $is_lui ? { $imm[31:12], 12'b0 } :
+                   ($is_load | $is_store) ? $src1_value + $imm :
                    $is_addi ? $src1_value + $imm :
                    $is_slti ? $sltiu_result ^ {31'b0, $src1_imm_signs_differ} :
                    $is_sltiu ? $sltiu_result :
@@ -178,6 +180,9 @@
    // Forbid writes to the zero register
    $wr_en = $rd_valid & ($rd[4:0] != 5'b0);
    
+   // Destination register data to be written back to the Register File
+   $rd_data[31:0] = $is_load ? $ld_data : $result;
+   
    
    // Branching logic
    $taken_br = $is_beq ? $src1_value == $src2_value :
@@ -201,9 +206,11 @@
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    // Register File Macro
-   m4+rf(32, 32, $reset, $wr_en, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
+   m4+rf(32, 32, $reset, $wr_en, $rd[4:0], $rd_data[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
    
-   //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
+   // Data Memory macro
+   m4+dmem(32, 32, $reset, $result[6:2], $is_store, $src2_value[31:0], $is_load, $ld_data[31:0])
+   
    m4+cpu_viz()
 \SV
    endmodule
